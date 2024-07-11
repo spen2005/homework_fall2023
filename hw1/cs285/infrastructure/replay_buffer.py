@@ -17,12 +17,14 @@ class ReplayBuffer(object):
         self.next_obs = None
         self.terminals = None
 
+    #def __len__(self):
+    #   if self.obs:
+    #       return self.obs.shape[0]
+    #   else:
+    #       return 0
     def __len__(self):
-        if self.obs:
-            return self.obs.shape[0]
-        else:
-            return 0
-
+        return 0 if self.obs is None else self.obs.shape[0]
+    
     def add_rollouts(self, paths, concat_rew=True):
 
         # add new rollouts into our list of rollouts

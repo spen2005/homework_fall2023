@@ -45,12 +45,12 @@ def build_mlp(
     layers = []
     in_size = input_size
     for _ in range(n_layers):
-        layers.append(nn.Linear(in_size, size)) ## Appends a linear layer to the list of layers
-        layers.append(nn.Tanh()) ## Appends a tanh activation to the list of layers
+        layers.append(nn.Linear(in_size, size))
+        layers.append(nn.Tanh())
         in_size = size
-    layers.append(nn.Linear(in_size, output_size)) ## Appends a linear layer to the list of layers
+    layers.append(nn.Linear(in_size, output_size))
 
-    mlp = nn.Sequential(*layers) ## Creates a sequential model with the layers
+    mlp = nn.Sequential(*layers)
     return mlp
 
 
@@ -129,12 +129,11 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # through it. For example, you can return a torch.FloatTensor. You can also
         # return more flexible objects, such as a
         # `torch.distributions.Distribution` object. It's up to you!
-        #raise NotImplementedError
-
-        mean = self.mean_net(observation) ## Passes the observation through the mean network
-        std = torch.exp(self.logstd) ## Exponentiates the logstd to get the standard deviation
-        action = distributions.Normal(mean, std).sample() ## Samples an action from the normal distribution with mean and std
-        return action
+        mean = self.mean_net(observation)
+        std = torch.exp(self.logstd)
+        distribution = distributions.Normal(mean, std)
+        sampled_action = distribution.rsample()  # Sample from the distribution
+        return sampled_action
 
     def update(self, observations, actions):
         """
@@ -146,14 +145,11 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             dict: 'Training Loss': supervised learning loss
         """
         # TODO: update the policy and return the loss
-        # raise NotImplementedError
-
-        self.optimizer.zero_grad() ## Zeroes the gradients
-        action = self.forward(observations) ## Passes the observations through the network to get the action
-        loss = F.mse_loss(action, actions) ## Calculates the mean squared error loss between the predicted action and the actual action
-        loss.backward() ## Backpropagates the loss
-        self.optimizer.step() ## Updates the weights
-
+        loss = F.mse_loss(self.mean_net(observations), actions)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
