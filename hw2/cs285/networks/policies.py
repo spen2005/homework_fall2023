@@ -59,7 +59,19 @@ class MLPPolicy(nn.Module):
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
-        action = None
+        obs_tensor = ptu.from_numpy(obs)
+
+        if self.discrete:
+            logits = self.logits_net(obs_tensor)
+            action_probs = F.softmax(logits, dim=-1)
+            action = torch.multinomial(action_probs, num_samples=1)
+        else:
+            mean = self.mean_net(obs_tensor)
+            std = torch.exp(self.logstd)
+            normal_dist = distributions.Normal(mean, std)
+            action = normal_dist.sample()
+
+        action = ptu.to_numpy(action.squeeze())
 
         return action
 
@@ -69,13 +81,22 @@ class MLPPolicy(nn.Module):
         able to differentiate through it. For example, you can return a torch.FloatTensor. You can also return more
         flexible objects, such as a `torch.distributions.Distribution` object. It's up to you!
         """
+        obs_tensor = ptu.from_numpy(obs)
+
         if self.discrete:
             # TODO: define the forward pass for a policy with a discrete action space.
-            pass
+            logits = self.logits_net(obs_tensor)
+            action_probs = F.softmax(logits, dim=-1)
+            action = torch.multinomial(action_probs, num_samples=1)
         else:
             # TODO: define the forward pass for a policy with a continuous action space.
-            pass
-        return None
+            mean = self.mean_net(obs_tensor)
+            std = torch.exp(self.logstd)
+            normal_dist = distributions.Normal(mean, std)
+            action = normal_dist.sample()
+
+        action = ptu.to_numpy(action.squeeze())
+        return action
 
     def update(self, obs: np.ndarray, actions: np.ndarray, *args, **kwargs) -> dict:
         """Performs one iteration of gradient descent on the provided batch of data."""
@@ -92,12 +113,28 @@ class MLPPolicyPG(MLPPolicy):
         advantages: np.ndarray,
     ) -> dict:
         """Implements the policy gradient actor update."""
-        obs = ptu.from_numpy(obs)
-        actions = ptu.from_numpy(actions)
-        advantages = ptu.from_numpy(advantages)
 
         # TODO: implement the policy gradient actor update.
-        loss = None
+        obs_tensor = ptu.from_numpy(obs)
+        actions_tensor = ptu.from_numpy(actions)
+        advantages_tensor = ptu.from_numpy(advantages).squeeze()
+
+        if self.discrete:
+            logits = self.logits_net(obs_tensor)
+            log_probs = F.log_softmax(logits, dim=-1)
+            log_probs_actions = log_probs[range(len(actions)), actions]
+            loss = -torch.mean(log_probs_actions * advantages_tensor)
+        else:
+            mean = self.mean_net(obs_tensor)
+            std = torch.exp(self.logstd)
+            normal_dist = torch.distributions.Normal(mean, std)
+            log_probs = normal_dist.log_prob(actions_tensor)
+            log_probs = log_probs.sum(dim=-1)  # Summing over the action dimensions to match the batch size
+            loss = -torch.mean(log_probs * advantages_tensor)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         return {
             "Actor Loss": ptu.to_numpy(loss),
