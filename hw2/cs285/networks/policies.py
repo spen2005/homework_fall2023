@@ -26,27 +26,30 @@ class MLPPolicy(nn.Module):
         layer_size: int,
         learning_rate: float,
     ):
-        super().__init__()
+        super().__init__() # initialize the base class
 
         if discrete:
+            # The network outputs logits, which are used to compute the probability of taking each action.
             self.logits_net = ptu.build_mlp(
                 input_size=ob_dim,
                 output_size=ac_dim,
                 n_layers=n_layers,
                 size=layer_size,
             ).to(ptu.device)
-            parameters = self.logits_net.parameters()
+            parameters = self.logits_net.parameters() # The parameters of the network
         else:
+            # The network outputs the mean of the Gaussian, and the standard deviation is fixed.
             self.mean_net = ptu.build_mlp(
                 input_size=ob_dim,
                 output_size=ac_dim,
                 n_layers=n_layers,
                 size=layer_size,
             ).to(ptu.device)
+            # The standard deviation is fixed, so we just need to store the log of the standard deviation.
             self.logstd = nn.Parameter(
                 torch.zeros(ac_dim, dtype=torch.float32, device=ptu.device)
             )
-            parameters = itertools.chain([self.logstd], self.mean_net.parameters())
+            parameters = itertools.chain([self.logstd], self.mean_net.parameters()) # This line chains the parameters of the mean_net and the logstd
 
         self.optimizer = optim.Adam(
             parameters,
@@ -59,19 +62,19 @@ class MLPPolicy(nn.Module):
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
-        obs_tensor = ptu.from_numpy(obs)
+        obs_tensor = ptu.from_numpy(obs) # Convert the observation to a tensor
 
         if self.discrete:
-            logits = self.logits_net(obs_tensor)
-            action_probs = F.softmax(logits, dim=-1)
-            action = torch.multinomial(action_probs, num_samples=1)
+            logits = self.logits_net(obs_tensor) # Get the logits from the network
+            action_probs = F.softmax(logits, dim=-1) # Compute the action probabilities
+            action = torch.multinomial(action_probs, num_samples=1) # Sample an action from the action probabilities
         else:
-            mean = self.mean_net(obs_tensor)
-            std = torch.exp(self.logstd)
-            normal_dist = distributions.Normal(mean, std)
-            action = normal_dist.sample()
+            mean = self.mean_net(obs_tensor) # Get the mean from the network
+            std = torch.exp(self.logstd) # Get the standard deviation from the logstd
+            normal_dist = distributions.Normal(mean, std) # Create a normal distribution
+            action = normal_dist.sample() # Sample an action from the normal distribution
 
-        action = ptu.to_numpy(action.squeeze())
+        action = ptu.to_numpy(action.squeeze()) # 1. Squeeze the action tensor to remove the extra dimensions, 2. Convert the tensor to a numpy array
 
         return action
 
@@ -81,7 +84,7 @@ class MLPPolicy(nn.Module):
         able to differentiate through it. For example, you can return a torch.FloatTensor. You can also return more
         flexible objects, such as a `torch.distributions.Distribution` object. It's up to you!
         """
-        obs_tensor = ptu.from_numpy(obs)
+        obs_tensor = ptu.from_numpy(obs) # Convert the observation to a tensor
 
         if self.discrete:
             # TODO: define the forward pass for a policy with a discrete action space.
@@ -120,21 +123,21 @@ class MLPPolicyPG(MLPPolicy):
         advantages_tensor = ptu.from_numpy(advantages).squeeze()
 
         if self.discrete:
-            logits = self.logits_net(obs_tensor)
-            log_probs = F.log_softmax(logits, dim=-1)
-            log_probs_actions = log_probs[range(len(actions)), actions]
-            loss = -torch.mean(log_probs_actions * advantages_tensor)
+            logits = self.logits_net(obs_tensor) # Get the logits from the network
+            log_probs = F.log_softmax(logits, dim=-1) # Compute the log of the action probabilities
+            log_probs_actions = log_probs[range(len(actions)), actions] # Get the log probabilities of the actions taken
+            loss = -torch.mean(log_probs_actions * advantages_tensor) # Compute the loss
         else:
-            mean = self.mean_net(obs_tensor)
-            std = torch.exp(self.logstd)
-            normal_dist = torch.distributions.Normal(mean, std)
-            log_probs = normal_dist.log_prob(actions_tensor)
+            mean = self.mean_net(obs_tensor) # Get the mean from the network
+            std = torch.exp(self.logstd) # Get the standard deviation from the logstd
+            normal_dist = torch.distributions.Normal(mean, std) # Create a normal distribution
+            log_probs = normal_dist.log_prob(actions_tensor) # Compute the log probabilities of the actions taken
             log_probs = log_probs.sum(dim=-1)  # Summing over the action dimensions to match the batch size
-            loss = -torch.mean(log_probs * advantages_tensor)
+            loss = -torch.mean(log_probs * advantages_tensor) # Compute the loss
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.optimizer.zero_grad() # Zero the gradients
+        loss.backward() # Compute the gradients
+        self.optimizer.step() # Update the parameters
 
         return {
             "Actor Loss": ptu.to_numpy(loss),

@@ -70,19 +70,20 @@ def run_training_loop(args):
         print(f"\n********** Iteration {itr} ************")
         # TODO: sample `args.batch_size` transitions using utils.sample_trajectories
         # make sure to use `max_ep_len`
-        trajs, envsteps_this_batch = utils.sample_trajectories(env, agent.actor, args.batch_size, max_ep_len)  # TODO
-        total_envsteps += envsteps_this_batch
+        # TODO
+        trajs, envsteps_this_batch = utils.sample_trajectories(env, agent.actor, args.batch_size, max_ep_len) # sample trajectories from the environment
+        total_envsteps += envsteps_this_batch # keep track of the environment steps
 
         # trajs should be a list of dictionaries of NumPy arrays, where each dictionary corresponds to a trajectory.
         # this line converts this into a single dictionary of lists of NumPy arrays.
-        trajs_dict = {k: [traj[k] for traj in trajs] for k in trajs[0]}
+        trajs_dict = {k: [traj[k] for traj in trajs] for k in trajs[0]} # convert the list of dictionaries into a dictionary of lists
 
         # TODO: train the agent using the sampled trajectories and the agent's update function
         # Unpack trajectories
         obs = trajs_dict['observation']
         actions = trajs_dict['action']
         rewards = trajs_dict['reward']
-        terminals = trajs_dict['terminal']
+        terminals = trajs_dict['terminal'] 
 
         # Train the agent using the sampled trajectories and the agent's update function
         train_info: dict = agent.update(obs, actions, rewards, terminals)
@@ -114,10 +115,12 @@ def run_training_loop(args):
 
         if args.video_log_freq != -1 and itr % args.video_log_freq == 0:
             print("\nCollecting video rollouts...")
+            # sample trajectories for video rollouts
             eval_video_trajs = utils.sample_n_trajectories(
                 env, agent.actor, MAX_NVIDEO, max_ep_len, render=True
-            )
+            ) 
 
+            # save the video
             logger.log_trajs_as_videos(
                 eval_video_trajs,
                 itr,
@@ -125,6 +128,7 @@ def run_training_loop(args):
                 max_videos_to_save=MAX_NVIDEO,
                 video_title="eval_rollouts",
             )
+            
 
 
 def main():

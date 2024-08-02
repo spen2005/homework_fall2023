@@ -15,7 +15,7 @@ def sample_trajectory(
     env: gym.Env, policy: MLPPolicy, max_length: int, render: bool = False
 ) -> Dict[str, np.ndarray]:
     """Sample a rollout in the environment from a policy."""
-    ob = env.reset()
+    ob = env.reset() # reset the environment
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
     while True:
@@ -30,10 +30,14 @@ def sample_trajectory(
             )
 
         # TODO use the most recent ob and the policy to decide what to do
-        ac: np.ndarray = policy.get_action(ob)
+        ac: np.ndarray = policy.get_action(ob) 
 
         # TODO: use that action to take a step in the environment
         next_ob, rew, done, _ = env.step(ac)
+        # next_ob: next observation
+        # rew: reward
+        # done: whether the episode is done
+        # _: info
 
         # TODO rollout can end due to done, or due to max_length
         steps += 1
@@ -99,7 +103,7 @@ def compute_metrics(trajs, eval_trajs):
 
     # returns, for logging
     train_returns = [traj["reward"].sum() for traj in trajs]
-    eval_returns = [eval_traj["reward"].sum() for eval_traj in eval_trajs]
+    eval_returns = [eval_traj["reward"].sum() for eval_traj in eval_trajs] # eval returns mean the returns of the evaluation trajectories
 
     # episode lengths, for logging
     train_ep_lens = [len(traj["reward"]) for traj in trajs]

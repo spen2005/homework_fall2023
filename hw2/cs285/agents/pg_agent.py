@@ -42,10 +42,10 @@ class PGAgent(nn.Module):
             self.critic = None
 
         # other agent parameters
-        self.gamma = gamma
-        self.use_reward_to_go = use_reward_to_go
-        self.gae_lambda = gae_lambda
-        self.normalize_advantages = normalize_advantages
+        self.gamma = gamma # Gamma is the discount factor
+        self.use_reward_to_go = use_reward_to_go # Whether to use reward-to-go
+        self.gae_lambda = gae_lambda # Lambda for generalized advantage estimation
+        self.normalize_advantages = normalize_advantages # Whether to normalize the advantages
 
     def update(
         self, # The agent object
@@ -68,11 +68,11 @@ class PGAgent(nn.Module):
         # way. obs, actions, rewards, terminals, and q_values should all be arrays with a leading dimension of `batch_size`
         # beyond this point.
         
-        obs = np.concatenate(obs)
-        actions = np.concatenate(actions)
-        rewards = np.concatenate(rewards)
-        terminals = np.concatenate(terminals)
-        q_values = np.concatenate(q_values)
+        obs = np.concatenate(obs) # Concatenate the list of NumPy arrays into a single NumPy array
+        actions = np.concatenate(actions) # Concatenate the list of NumPy arrays into a single NumPy array
+        rewards = np.concatenate(rewards) # Concatenate the list of NumPy arrays into a single NumPy array
+        terminals = np.concatenate(terminals) # Concatenate the list of NumPy arrays into a single NumPy array
+        q_values = np.concatenate(q_values) # Concatenate the list of NumPy arrays into a single NumPy array
 
 
         # step 2: calculate advantages from Q values
@@ -135,11 +135,11 @@ class PGAgent(nn.Module):
                 advantages = q_values - ptu.to_numpy(values)
             else:
                 # TODO: implement GAE
-                batch_size = obs.shape[0]
+                batch_size = obs.shape[0] # First, get the batch size
 
                 # HINT: append a dummy T+1 value for simpler recursive calculation
-                values = np.append(values, [0])
-                advantages = np.zeros(batch_size + 1)
+                values = np.append(values, [0]) # Append a dummy value to the end of the values array
+                advantages = np.zeros(batch_size + 1) # Initialize the advantages array
 
                 for i in reversed(range(batch_size)):
                     # TODO: recursively compute advantage estimates starting from timestep T.
